@@ -54,8 +54,8 @@ private:
     vk::Queue queue;
 
     vk::UniqueSwapchainKHR swapchain;
-    uint32_t swapchainImageCount;
     std::vector<vk::Image> swapchainImages;
+    uint32_t swapchainImageCount;
     vk::Format swapchainImageFormat;
     vk::Extent2D swapchainExtent;
 
@@ -93,7 +93,7 @@ private:
         auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
-        std::vector layers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
+        std::vector layers{ "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
         auto extensions = getRequiredExtensions();
 
         vk::ApplicationInfo appInfo;
@@ -136,13 +136,17 @@ private:
         findQueueFamily(physicalDevice);
 
         float queuePriority = 1.0f;
-        vk::DeviceQueueCreateInfo queueCreateInfo({}, queueFamilyIndex, 1, &queuePriority);
+        vk::DeviceQueueCreateInfo queueCreateInfo;
+        queueCreateInfo.setQueueFamilyIndex(queueFamilyIndex);
+        queueCreateInfo.setQueuePriorities(queuePriority);
 
-        vk::PhysicalDeviceFeatures deviceFeatures{};
-        vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{ true };
+        vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
+        dynamicRenderingFeatures.setDynamicRendering(true);
 
-        const std::vector extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-        vk::DeviceCreateInfo createInfo({}, queueCreateInfo, {}, extensions, &deviceFeatures);
+        std::vector extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+        vk::DeviceCreateInfo createInfo;
+        createInfo.setQueueCreateInfos(queueCreateInfo);
+        createInfo.setPEnabledExtensionNames(extensions);
         createInfo.setPNext(&dynamicRenderingFeatures);
 
         device = physicalDevice.createDeviceUnique(createInfo);
@@ -182,20 +186,15 @@ private:
 
     void createGraphicsPipeline()
     {
-        auto vertShaderCode = readFile("../shaders/vert.spv");
-        auto fragShaderCode = readFile("../shaders/frag.spv");
+        vk::UniqueShaderModule vertShaderModule = createShaderModule("../shaders/vert.spv");
+        vk::UniqueShaderModule fragShaderModule = createShaderModule("../shaders/frag.spv");
 
-        vk::UniqueShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        vk::UniqueShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+        std::array shaderStages{
+            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule.get(), "main"),
+            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule.get(), "main"),
+        };
 
-        vk::PipelineShaderStageCreateInfo vertShaderStageInfo({}, vk::ShaderStageFlagBits::eVertex,
-                                                              vertShaderModule.get(), "main");
-        vk::PipelineShaderStageCreateInfo fragShaderStageInfo({}, vk::ShaderStageFlagBits::eFragment,
-                                                              fragShaderModule.get(), "main");
-
-        std::array shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
-
-        vk::PipelineVertexInputStateCreateInfo vertexInputInfo({}, 0, nullptr, 0, nullptr);
+        vk::PipelineVertexInputStateCreateInfo vertexInput({}, 0, nullptr, 0, nullptr);
 
         vk::PipelineInputAssemblyStateCreateInfo inputAssembly({}, vk::PrimitiveTopology::eTriangleList);
 
@@ -209,18 +208,17 @@ private:
                                                             vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise,
                                                             VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
 
-        vk::PipelineMultisampleStateCreateInfo multisampling({}, vk::SampleCountFlagBits::e1, VK_FALSE);
+        vk::PipelineMultisampleStateCreateInfo multisampling;
 
         vk::PipelineColorBlendAttachmentState colorBlendAttachment(VK_FALSE);
-        colorBlendAttachment.setColorWriteMask(
-            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+        colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
 
         vk::PipelineColorBlendStateCreateInfo colorBlending({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment);
 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
 
-        vk::GraphicsPipelineCreateInfo pipelineInfo({}, shaderStages, &vertexInputInfo, &inputAssembly, {},
+        vk::GraphicsPipelineCreateInfo pipelineInfo({}, shaderStages, &vertexInput, &inputAssembly, {},
                                                     &viewportState, &rasterizer, &multisampling, {}, &colorBlending, {}, pipelineLayout.get(),
                                                     nullptr, 0, {}, {});
 
@@ -322,8 +320,9 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    vk::UniqueShaderModule createShaderModule(const std::vector<char>& code)
+    vk::UniqueShaderModule createShaderModule(const std::string& path)
     {
+        auto code = readFile(path);
         vk::ShaderModuleCreateInfo createInfo({}, code.size(), reinterpret_cast<const uint32_t*>(code.data()));
         return device->createShaderModuleUnique(createInfo);
     }
@@ -375,8 +374,7 @@ private:
                                     VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData,
                                     void* pUserData)
     {
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
+        std::cerr << pCallbackData->pMessage << "\n\n";
         return VK_FALSE;
     }
 };
