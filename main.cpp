@@ -108,7 +108,7 @@ private:
         auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
-        std::vector layers = { "VK_LAYER_KHRONOS_validation" };
+        std::vector layers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
         auto extensions = getRequiredExtensions();
 
         vk::InstanceCreateInfo createInfo;
@@ -121,11 +121,11 @@ private:
 
     void setupDebugMessenger()
     {
-        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-
-        debugUtilsMessenger = instance->createDebugUtilsMessengerEXTUnique(
-            vk::DebugUtilsMessengerCreateInfoEXT({}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback));
+        vk::DebugUtilsMessengerCreateInfoEXT createInfo;
+        createInfo.setMessageSeverity(vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+        createInfo.setMessageType(vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        createInfo.setPfnUserCallback(&debugUtilsMessengerCallback);
+        debugUtilsMessenger = instance->createDebugUtilsMessengerEXTUnique(createInfo);
     }
 
     void createSurface()
@@ -227,7 +227,7 @@ private:
 
         vk::PipelineInputAssemblyStateCreateInfo inputAssembly({}, vk::PrimitiveTopology::eTriangleList);
 
-        vk::Viewport viewport(0.0f, 0.0f, (float)swapchainExtent.width, (float)swapchainExtent.height, 0.0f, 1.0f);
+        vk::Viewport viewport(0.0f, 0.0f, swapchainExtent.width, swapchainExtent.height, 0.0f, 1.0f);
 
         vk::Rect2D scissor({ 0, 0 }, swapchainExtent);
 
@@ -245,11 +245,7 @@ private:
 
         vk::PipelineColorBlendStateCreateInfo colorBlending({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment);
 
-        std::array states{ vk::DynamicState::eViewport, vk::DynamicState::eLineWidth };
-        vk::PipelineDynamicStateCreateInfo dynamicState({}, states);
-
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-
         pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
 
         vk::GraphicsPipelineCreateInfo pipelineInfo({}, shaderStages, &vertexInputInfo, &inputAssembly, {},
@@ -257,11 +253,10 @@ private:
                                                     renderPass.get(), 0, {}, {});
 
         vk::ResultValue<vk::UniquePipeline> result = device->createGraphicsPipelineUnique({}, pipelineInfo);
-        if (result.result == vk::Result::eSuccess) {
-            graphicsPipeline = std::move(result.value);
-        } else {
+        if (result.result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to create a pipeline!");
         }
+        graphicsPipeline = std::move(result.value);
     }
 
     void createFramebuffers()
