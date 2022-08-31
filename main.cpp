@@ -20,10 +20,24 @@ class HelloTriangleApplication
 public:
     void run()
     {
-        initWindow();
+        // initWindow
+        glfwInit();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
         initVulkan();
-        mainLoop();
-        cleanup();
+
+        // main loop
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();
+            drawFrame();
+        }
+        device->waitIdle();
+
+        // cleanup
+        glfwDestroyWindow(window);
+        glfwTerminate();
     }
 
 private:
@@ -59,16 +73,6 @@ private:
     std::vector<vk::UniqueFence> inFlightFences;
     size_t currentFrame = 0;
 
-    void initWindow()
-    {
-        glfwInit();
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-    }
-
     void initVulkan()
     {
         createInstance();
@@ -84,22 +88,6 @@ private:
         createCommandPool();
         createCommandBuffers();
         createSyncObjects();
-    }
-
-    void mainLoop()
-    {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-            drawFrame();
-        }
-
-        device->waitIdle();
-    }
-
-    void cleanup()
-    {
-        glfwDestroyWindow(window);
-        glfwTerminate();
     }
 
     void createInstance()
