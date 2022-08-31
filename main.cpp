@@ -134,7 +134,9 @@ private:
 
         auto extensions = getRequiredExtensions();
 
-        vk::InstanceCreateInfo createInfo({}, {}, layers, extensions);
+        vk::InstanceCreateInfo createInfo;
+        createInfo.setPEnabledLayerNames(layers);
+        createInfo.setPEnabledExtensionNames(extensions);
         instance = vk::createInstanceUnique(createInfo);
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
@@ -142,13 +144,8 @@ private:
 
     void setupDebugMessenger()
     {
-        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
         debugUtilsMessenger = instance->createDebugUtilsMessengerEXTUnique(
             vk::DebugUtilsMessengerCreateInfoEXT({}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback));
