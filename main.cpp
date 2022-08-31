@@ -3,10 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 
-#include <set>
-#include <cstdlib>
 #include <fstream>
-#include <optional>
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
@@ -435,8 +432,5 @@ int main()
         app.run();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
     }
-
-    return EXIT_SUCCESS;
 }
