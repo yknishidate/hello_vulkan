@@ -1,0 +1,9 @@
+x64/
+*vcxproj*
+Debug/
+Release/
+.editorconfig
+compile.bat
+.vscode/
+*.spv
+build
