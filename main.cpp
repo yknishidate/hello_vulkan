@@ -172,13 +172,11 @@ private:
 
     void createSurface()
     {
-        // glfw は生の VkSurface や VkInstance で操作する必要がある
         VkSurfaceKHR _surface;
-        if (glfwCreateWindowSurface(VkInstance(instance.get()), window, nullptr, &_surface) != VK_SUCCESS) {
+        if (glfwCreateWindowSurface(instance.get(), window, nullptr, &_surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
-        vk::ObjectDestroy<vk::Instance, VULKAN_HPP_DEFAULT_DISPATCHER_TYPE> _deleter(instance.get());
-        surface = vk::UniqueSurfaceKHR(vk::SurfaceKHR(_surface), _deleter);
+        surface = vk::UniqueSurfaceKHR{ _surface, { instance.get() } };
     }
 
     void pickPhysicalDevice()
