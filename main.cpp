@@ -18,10 +18,10 @@ const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector<const char*> validationLayers = {
+const std::vector validationLayers = {
     "VK_LAYER_KHRONOS_validation" };
 
-const std::vector<const char*> deviceExtensions = {
+const std::vector deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 struct QueueFamilyIndices
@@ -41,12 +41,6 @@ struct SwapChainSupportDetails
     std::vector<vk::SurfaceFormatKHR> formats;
     std::vector<vk::PresentModeKHR> presentModes;
 };
-
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 
 class HelloTriangleApplication
 {
@@ -154,26 +148,20 @@ private:
 
         auto extensions = getRequiredExtensions();
 
-        if (enableValidationLayers) {
-            // in debug mode, use the debugUtilsMessengerCallback
-            vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+        // in debug mode, use the debugUtilsMessengerCallback
+        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
 
-            vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
-            vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> createInfo(
-                { {}, &appInfo, validationLayers, extensions },
-                { {}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback });
-            instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>());
-        } else {
-            // in non-debug mode
-            vk::InstanceCreateInfo createInfo({}, &appInfo, {}, extensions);
-            instance = vk::createInstanceUnique(createInfo, nullptr);
-        }
+        vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> createInfo(
+            { {}, &appInfo, validationLayers, extensions },
+            { {}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback });
+        instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>());
 
         // 全ての関数ポインタを取得する
         // get all the other function pointers
@@ -182,9 +170,6 @@ private:
 
     void setupDebugMessenger()
     {
-        if (!enableValidationLayers)
-            return;
-
         vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
@@ -240,10 +225,7 @@ private:
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
         vk::DeviceCreateInfo createInfo({}, queueCreateInfos, {}, deviceExtensions, &deviceFeatures);
-
-        if (enableValidationLayers) {
-            createInfo.setPEnabledLayerNames(validationLayers);
-        }
+        createInfo.setPEnabledLayerNames(validationLayers);
 
         device = physicalDevice.createDeviceUnique(createInfo);
         graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
@@ -584,10 +566,7 @@ private:
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
         std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-        if (enableValidationLayers) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         return extensions;
     }
