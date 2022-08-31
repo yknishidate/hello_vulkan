@@ -56,8 +56,7 @@ private:
 
     std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
     std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
-    std::vector<vk::Fence> inFlightFences;
-    std::vector<vk::Fence> imagesInFlight;
+    std::vector<vk::UniqueFence> inFlightFences;
     size_t currentFrame = 0;
 
     void initWindow()
@@ -99,12 +98,7 @@ private:
 
     void cleanup()
     {
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            device->destroyFence(inFlightFences[i]);
-        }
-
         glfwDestroyWindow(window);
-
         glfwTerminate();
     }
 
@@ -316,40 +310,31 @@ private:
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-        imagesInFlight.resize(swapChainImages.size());
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             imageAvailableSemaphores[i] = device->createSemaphoreUnique({});
             renderFinishedSemaphores[i] = device->createSemaphoreUnique({});
-            inFlightFences[i] = device->createFence({ vk::FenceCreateFlagBits::eSignaled });
+            inFlightFences[i] = device->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
         }
     }
 
     void drawFrame()
     {
-        device->waitForFences(inFlightFences[currentFrame], true, UINT64_MAX);
-        device->resetFences(inFlightFences[currentFrame]);
+        device->waitForFences(inFlightFences[currentFrame].get(), true, UINT64_MAX);
+        device->resetFences(inFlightFences[currentFrame].get());
 
-        vk::ResultValue<uint32_t> result = device->acquireNextImageKHR(swapChain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get());
-        uint32_t imageIndex;
-        if (result.result == vk::Result::eSuccess) {
-            imageIndex = result.value;
-        } else {
+        vk::ResultValue result = device->acquireNextImageKHR(swapChain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get());
+        if (result.result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to acquire next image!");
         }
 
-        if (imagesInFlight[imageIndex]) {
-            device->waitForFences(imagesInFlight[imageIndex], true, UINT64_MAX);
-        }
-        imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+        uint32_t imageIndex = result.value;
 
         vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
         vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrame].get(), waitStage,
                                   commandBuffers[imageIndex].get(), renderFinishedSemaphores[currentFrame].get());
 
-        device->resetFences(inFlightFences[currentFrame]);
-
-        queue.submit(submitInfo, inFlightFences[currentFrame]);
+        queue.submit(submitInfo, inFlightFences[currentFrame].get());
 
         vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrame].get(), swapChain.get(), imageIndex);
 
