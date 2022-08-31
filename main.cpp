@@ -245,35 +245,29 @@ private:
 
     void createCommandPool()
     {
-        vk::CommandPoolCreateInfo poolInfo({}, queueFamilyIndex);
-
+        vk::CommandPoolCreateInfo poolInfo;
+        poolInfo.setQueueFamilyIndex(queueFamilyIndex);
         commandPool = device->createCommandPoolUnique(poolInfo);
     }
 
     void createCommandBuffers()
     {
-        vk::CommandBufferAllocateInfo allocInfo(commandPool.get(), vk::CommandBufferLevel::ePrimary, swapchainImageCount);
-
+        vk::CommandBufferAllocateInfo allocInfo;
+        allocInfo.setCommandPool(commandPool.get());
+        allocInfo.setCommandBufferCount(swapchainImageCount);
         commandBuffers = device->allocateCommandBuffersUnique(allocInfo);
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
-            commandBuffers[i]->begin(vk::CommandBufferBeginInfo{});
+            commandBuffers[i]->begin(vk::CommandBufferBeginInfo());
 
-            vk::ClearValue clearColorValue;
-            clearColorValue.setColor(vk::ClearColorValue{ std::array{0.0f, 0.0f, 0.0f, 1.0f} });
-
-            vk::RenderingAttachmentInfoKHR colorAttachment;
+            vk::RenderingAttachmentInfo colorAttachment;
             colorAttachment.setImageView(swapchainImageViews[i].get());
             colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
-            colorAttachment.setClearValue(clearColorValue);
-            colorAttachment.setLoadOp(vk::AttachmentLoadOp::eClear);
-            colorAttachment.setStoreOp(vk::AttachmentStoreOp::eStore);
 
             vk::RenderingInfo renderingInfo;
             renderingInfo.setRenderArea({ {0, 0}, swapchainExtent });
             renderingInfo.setLayerCount(1);
             renderingInfo.setColorAttachments(colorAttachment);
-
             commandBuffers[i]->beginRendering(renderingInfo);
 
             commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
@@ -283,7 +277,6 @@ private:
 
             vk::ImageMemoryBarrier imageMemoryBarrier;
             imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
-            imageMemoryBarrier.setOldLayout(vk::ImageLayout::eUndefined);
             imageMemoryBarrier.setNewLayout(vk::ImageLayout::ePresentSrcKHR);
             imageMemoryBarrier.setImage(swapchainImages[i]);
             imageMemoryBarrier.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
@@ -353,8 +346,7 @@ private:
     std::vector<const char*> getRequiredExtensions()
     {
         uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
         std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
