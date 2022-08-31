@@ -23,7 +23,8 @@ const std::vector layers = {
 };
 
 const std::vector deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
 
 struct SwapChainSupportDetails
 {
@@ -131,27 +132,10 @@ private:
         auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
-        vk::ApplicationInfo appInfo(
-            "Hello Triangle", VK_MAKE_VERSION(1, 0, 0),
-            "No Engine", VK_MAKE_VERSION(1, 0, 0),
-            VK_API_VERSION_1_2);
-
         auto extensions = getRequiredExtensions();
 
-        // in debug mode, use the debugUtilsMessengerCallback
-        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-
-        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-
-        vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> createInfo(
-            { {}, &appInfo, layers, extensions },
-            { {}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback });
-        instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>());
+        vk::InstanceCreateInfo createInfo({}, {}, layers, extensions);
+        instance = vk::createInstanceUnique(createInfo);
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
     }
@@ -176,7 +160,7 @@ private:
         if (glfwCreateWindowSurface(instance.get(), window, nullptr, &_surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
-        surface = vk::UniqueSurfaceKHR{ _surface, { instance.get() } };
+        surface = vk::UniqueSurfaceKHR(_surface, { instance.get() });
     }
 
     void pickPhysicalDevice()
