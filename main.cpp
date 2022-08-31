@@ -304,13 +304,7 @@ private:
         device->waitForFences(inFlightFences[currentFrame].get(), true, UINT64_MAX);
         device->resetFences(inFlightFences[currentFrame].get());
 
-        vk::ResultValue result = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get());
-        if (result.result != vk::Result::eSuccess) {
-            throw std::runtime_error("failed to acquire next image!");
-        }
-
-        uint32_t imageIndex = result.value;
-
+        uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get()).value;
         vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
         vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrame].get(), waitStage,
                                   commandBuffers[imageIndex].get(), renderFinishedSemaphores[currentFrame].get());
@@ -327,10 +321,7 @@ private:
     vk::UniqueShaderModule createShaderModule(const std::vector<char>& code)
     {
         vk::ShaderModuleCreateInfo createInfo({}, code.size(), reinterpret_cast<const uint32_t*>(code.data()));
-
-        vk::UniqueShaderModule shaderModule = device->createShaderModuleUnique(createInfo);
-
-        return shaderModule;
+        return device->createShaderModuleUnique(createInfo);
     }
 
     void findQueueFamily(vk::PhysicalDevice physicalDevice)
@@ -362,19 +353,15 @@ private:
     static std::vector<char> readFile(const std::string& filename)
     {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
         if (!file.is_open()) {
             throw std::runtime_error("failed to open file!");
         }
 
         size_t fileSize = file.tellg();
         std::vector<char> buffer(fileSize);
-
         file.seekg(0);
         file.read(buffer.data(), fileSize);
-
         file.close();
-
         return buffer;
     }
 
