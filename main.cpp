@@ -54,14 +54,13 @@ private:
     vk::Queue queue;
 
     vk::UniqueSwapchainKHR swapchain;
+    uint32_t swapchainImageCount;
     std::vector<vk::Image> swapchainImages;
     vk::Format swapchainImageFormat;
     vk::Extent2D swapchainExtent;
 
     std::vector<vk::UniqueImageView> swapchainImageViews;
-    std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
 
-    vk::UniqueRenderPass renderPass;
     vk::UniquePipelineLayout pipelineLayout;
     vk::UniquePipeline graphicsPipeline;
 
@@ -82,9 +81,7 @@ private:
         createLogicalDevice();
         createSwapChain();
         createImageViews();
-        createRenderPass();
         createGraphicsPipeline();
-        createFramebuffers();
         createCommandPool();
         createCommandBuffers();
         createSyncObjects();
@@ -154,13 +151,14 @@ private:
 
     void createSwapChain()
     {
+        swapchainImageCount = 3;
         swapchainImageFormat = vk::Format::eB8G8R8A8Unorm;
         swapchainExtent.width = WIDTH;
         swapchainExtent.height = HEIGHT;
 
         vk::SwapchainCreateInfoKHR createInfo;
         createInfo.setSurface(surface.get());
-        createInfo.setMinImageCount(3);
+        createInfo.setMinImageCount(swapchainImageCount);
         createInfo.setImageFormat(swapchainImageFormat);
         createInfo.setImageExtent(swapchainExtent);
         createInfo.setImageArrayLayers(1);
@@ -180,26 +178,6 @@ private:
             createInfo.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
             swapchainImageViews[i] = device->createImageViewUnique(createInfo);
         }
-    }
-
-    void createRenderPass()
-    {
-        vk::AttachmentDescription colorAttachment({}, swapchainImageFormat,
-                                                  vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
-                                                  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
-                                                  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
-
-        vk::AttachmentReference colorAttachmentRef(0, vk::ImageLayout::eColorAttachmentOptimal);
-
-        vk::SubpassDescription subpass({}, vk::PipelineBindPoint::eGraphics, {}, {}, 1, &colorAttachmentRef);
-
-        vk::SubpassDependency dependency(VK_SUBPASS_EXTERNAL, 0,
-                                         vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                         {}, vk::AccessFlagBits::eColorAttachmentWrite);
-
-        vk::RenderPassCreateInfo renderPassInfo({}, colorAttachment, subpass, dependency);
-
-        renderPass = device->createRenderPassUnique(renderPassInfo);
     }
 
     void createGraphicsPipeline()
@@ -244,24 +222,18 @@ private:
 
         vk::GraphicsPipelineCreateInfo pipelineInfo({}, shaderStages, &vertexInputInfo, &inputAssembly, {},
                                                     &viewportState, &rasterizer, &multisampling, {}, &colorBlending, {}, pipelineLayout.get(),
-                                                    renderPass.get(), 0, {}, {});
+                                                    nullptr, 0, {}, {});
+
+        vk::PipelineRenderingCreateInfo renderingInfo;
+        renderingInfo.setColorAttachmentCount(1);
+        renderingInfo.setColorAttachmentFormats(swapchainImageFormat);
+        pipelineInfo.setPNext(&renderingInfo);
 
         vk::ResultValue<vk::UniquePipeline> result = device->createGraphicsPipelineUnique({}, pipelineInfo);
         if (result.result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to create a pipeline!");
         }
         graphicsPipeline = std::move(result.value);
-    }
-
-    void createFramebuffers()
-    {
-        swapchainFramebuffers.reserve(swapchainImageViews.size());
-
-        for (auto const& view : swapchainImageViews) {
-            vk::FramebufferCreateInfo framebufferInfo({}, renderPass.get(), view.get(),
-                                                      swapchainExtent.width, swapchainExtent.height, 1);
-            swapchainFramebuffers.push_back(device->createFramebufferUnique(framebufferInfo));
-        }
     }
 
     void createCommandPool()
@@ -273,21 +245,47 @@ private:
 
     void createCommandBuffers()
     {
-        vk::CommandBufferAllocateInfo allocInfo(commandPool.get(), vk::CommandBufferLevel::ePrimary, static_cast<uint32_t>(swapchainFramebuffers.size()));
+        vk::CommandBufferAllocateInfo allocInfo(commandPool.get(), vk::CommandBufferLevel::ePrimary, swapchainImageCount);
 
         commandBuffers = device->allocateCommandBuffersUnique(allocInfo);
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
             commandBuffers[i]->begin(vk::CommandBufferBeginInfo{});
 
-            vk::ClearValue clearColor(std::array{ 0.0f, 0.0f, 0.0f, 1.0f });
-            vk::RenderPassBeginInfo renderPassInfo(renderPass.get(), swapchainFramebuffers[i].get(),
-                                                   { {0, 0}, swapchainExtent }, clearColor);
+            vk::ClearValue clearColorValue;
+            clearColorValue.setColor(vk::ClearColorValue{ std::array{0.0f, 0.0f, 0.0f, 1.0f} });
 
-            commandBuffers[i]->beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+            vk::RenderingAttachmentInfoKHR colorAttachment;
+            colorAttachment.setImageView(swapchainImageViews[i].get());
+            colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
+            colorAttachment.setClearValue(clearColorValue);
+            colorAttachment.setLoadOp(vk::AttachmentLoadOp::eClear);
+            colorAttachment.setStoreOp(vk::AttachmentStoreOp::eStore);
+
+            vk::RenderingInfo renderingInfo;
+            renderingInfo.setRenderArea({ {0, 0}, swapchainExtent });
+            renderingInfo.setLayerCount(1);
+            renderingInfo.setColorAttachments(colorAttachment);
+
+            commandBuffers[i]->beginRendering(renderingInfo);
+
             commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
             commandBuffers[i]->draw(3, 1, 0, 0);
-            commandBuffers[i]->endRenderPass();
+
+            commandBuffers[i]->endRendering();
+
+            vk::ImageMemoryBarrier imageMemoryBarrier;
+            imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+            imageMemoryBarrier.setOldLayout(vk::ImageLayout::eUndefined);
+            imageMemoryBarrier.setNewLayout(vk::ImageLayout::ePresentSrcKHR);
+            imageMemoryBarrier.setImage(swapchainImages[i]);
+            imageMemoryBarrier.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
+
+            commandBuffers[i]->pipelineBarrier(
+                vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                vk::PipelineStageFlagBits::eBottomOfPipe,
+                {}, {}, {}, imageMemoryBarrier);
+
             commandBuffers[i]->end();
         }
     }
