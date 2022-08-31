@@ -99,7 +99,11 @@ private:
         std::vector layers = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
         auto extensions = getRequiredExtensions();
 
+        vk::ApplicationInfo appInfo;
+        appInfo.setApiVersion(VK_API_VERSION_1_3);
+
         vk::InstanceCreateInfo createInfo;
+        createInfo.setPApplicationInfo(&appInfo);
         createInfo.setPEnabledLayerNames(layers);
         createInfo.setPEnabledExtensionNames(extensions);
         instance = vk::createInstanceUnique(createInfo);
@@ -138,9 +142,11 @@ private:
         vk::DeviceQueueCreateInfo queueCreateInfo({}, queueFamilyIndex, 1, &queuePriority);
 
         vk::PhysicalDeviceFeatures deviceFeatures{};
+        vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{ true };
 
         const std::vector extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
         vk::DeviceCreateInfo createInfo({}, queueCreateInfo, {}, extensions, &deviceFeatures);
+        createInfo.setPNext(&dynamicRenderingFeatures);
 
         device = physicalDevice.createDeviceUnique(createInfo);
         queue = device->getQueue(queueFamilyIndex, 0);
