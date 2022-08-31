@@ -171,7 +171,6 @@ private:
         createInfo.setImageExtent(swapchainExtent);
         createInfo.setImageArrayLayers(1);
         createInfo.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
-
         swapchain = device->createSwapchainKHRUnique(createInfo);
         swapchainImages = device->getSwapchainImagesKHR(swapchain.get());
     }
@@ -179,11 +178,12 @@ private:
     void createImageViews()
     {
         swapchainImageViews.resize(swapchainImages.size());
-
-        vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
         for (size_t i = 0; i < swapchainImages.size(); i++) {
-            vk::ImageViewCreateInfo createInfo({}, swapchainImages[i], vk::ImageViewType::e2D,
-                                               swapchainImageFormat, {}, subresourceRange);
+            vk::ImageViewCreateInfo createInfo;
+            createInfo.setImage(swapchainImages[i]);
+            createInfo.setViewType(vk::ImageViewType::e2D);
+            createInfo.setFormat(swapchainImageFormat);
+            createInfo.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
             swapchainImageViews[i] = device->createImageViewUnique(createInfo);
         }
     }
