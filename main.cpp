@@ -18,8 +18,9 @@ const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector validationLayers = {
-    "VK_LAYER_KHRONOS_validation" };
+const std::vector layers = {
+    "VK_LAYER_KHRONOS_validation"
+};
 
 const std::vector deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -159,12 +160,10 @@ private:
             vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
         vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> createInfo(
-            { {}, &appInfo, validationLayers, extensions },
+            { {}, &appInfo, layers, extensions },
             { {}, severityFlags, messageTypeFlags, &debugUtilsMessengerCallback });
         instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>());
 
-        // 全ての関数ポインタを取得する
-        // get all the other function pointers
         VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
     }
 
@@ -225,7 +224,7 @@ private:
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
         vk::DeviceCreateInfo createInfo({}, queueCreateInfos, {}, deviceExtensions, &deviceFeatures);
-        createInfo.setPEnabledLayerNames(validationLayers);
+        createInfo.setPEnabledLayerNames(layers);
 
         device = physicalDevice.createDeviceUnique(createInfo);
         graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
