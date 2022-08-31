@@ -18,13 +18,6 @@ const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-struct SwapChainSupportDetails
-{
-    vk::SurfaceCapabilitiesKHR capabilities;
-    std::vector<vk::SurfaceFormatKHR> formats;
-    std::vector<vk::PresentModeKHR> presentModes;
-};
-
 class HelloTriangleApplication
 {
 public:
@@ -176,28 +169,20 @@ private:
 
     void createSwapChain()
     {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+        swapChainImageFormat = vk::Format::eB8G8R8A8Unorm;
+        swapChainExtent.width = WIDTH;
+        swapChainExtent.height = HEIGHT;
 
-        vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-        vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        vk::Extent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-
-        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-            imageCount = swapChainSupport.capabilities.maxImageCount;
-        }
-
-        vk::SwapchainCreateInfoKHR createInfo(
-            {}, surface.get(), imageCount, surfaceFormat.format, surfaceFormat.colorSpace,
-            extent, 1, vk::ImageUsageFlagBits::eColorAttachment,
-            vk::SharingMode::eExclusive, {}, swapChainSupport.capabilities.currentTransform,
-            vk::CompositeAlphaFlagBitsKHR::eOpaque, presentMode, /* clipped = */ VK_TRUE, nullptr);
+        vk::SwapchainCreateInfoKHR createInfo;
+        createInfo.setSurface(surface.get());
+        createInfo.setMinImageCount(3);
+        createInfo.setImageFormat(swapChainImageFormat);
+        createInfo.setImageExtent(swapChainExtent);
+        createInfo.setImageArrayLayers(1);
+        createInfo.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
 
         swapChain = device->createSwapchainKHRUnique(createInfo);
         swapChainImages = device->getSwapchainImagesKHR(swapChain.get());
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainExtent = extent;
     }
 
     void createImageViews()
@@ -383,58 +368,6 @@ private:
         vk::UniqueShaderModule shaderModule = device->createShaderModuleUnique(createInfo);
 
         return shaderModule;
-    }
-
-    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
-    {
-        for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == vk::Format::eB8G8R8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-                return availableFormat;
-            }
-        }
-
-        return availableFormats[0];
-    }
-
-    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
-    {
-        for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == vk::PresentModeKHR::eFifoRelaxed) {
-                return availablePresentMode;
-            }
-        }
-
-        return vk::PresentModeKHR::eFifo;
-    }
-
-    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
-    {
-        if (capabilities.currentExtent.width != UINT32_MAX) {
-            return capabilities.currentExtent;
-        } else {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-
-            vk::Extent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height) };
-
-            // std::clamp()を使って分かりやすくしている
-            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-            return actualExtent;
-        }
-    }
-
-    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device)
-    {
-        SwapChainSupportDetails details;
-        details.capabilities = device.getSurfaceCapabilitiesKHR(surface.get());
-        details.formats = device.getSurfaceFormatsKHR(surface.get());
-        details.presentModes = device.getSurfacePresentModesKHR(surface.get());
-
-        return details;
     }
 
     void findQueueFamily(vk::PhysicalDevice physicalDevice)
