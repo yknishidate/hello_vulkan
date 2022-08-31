@@ -189,49 +189,58 @@ private:
         vk::UniqueShaderModule vertShaderModule = createShaderModule("../shaders/vert.spv");
         vk::UniqueShaderModule fragShaderModule = createShaderModule("../shaders/frag.spv");
 
-        std::array shaderStages{
-            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule.get(), "main"),
-            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule.get(), "main"),
-        };
+        std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
+        shaderStages[0].setStage(vk::ShaderStageFlagBits::eVertex);
+        shaderStages[0].setModule(vertShaderModule.get());
+        shaderStages[0].setPName("main");
+        shaderStages[1].setStage(vk::ShaderStageFlagBits::eFragment);
+        shaderStages[1].setModule(fragShaderModule.get());
+        shaderStages[1].setPName("main");
 
-        vk::PipelineVertexInputStateCreateInfo vertexInput({}, 0, nullptr, 0, nullptr);
+        vk::PipelineVertexInputStateCreateInfo vertexInput;
 
-        vk::PipelineInputAssemblyStateCreateInfo inputAssembly({}, vk::PrimitiveTopology::eTriangleList);
+        vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+        inputAssembly.setTopology(vk::PrimitiveTopology::eTriangleList);
 
-        vk::Viewport viewport(0.0f, 0.0f, swapchainExtent.width, swapchainExtent.height, 0.0f, 1.0f);
+        vk::Viewport viewport;
+        viewport.setWidth(swapchainExtent.width);
+        viewport.setHeight(swapchainExtent.height);
 
-        vk::Rect2D scissor({ 0, 0 }, swapchainExtent);
+        vk::Rect2D scissor;
+        scissor.setExtent(swapchainExtent);
 
-        vk::PipelineViewportStateCreateInfo viewportState({}, 1, &viewport, 1, &scissor);
+        vk::PipelineViewportStateCreateInfo viewportState;
+        viewportState.setViewports(viewport);
+        viewportState.setScissors(scissor);
 
-        vk::PipelineRasterizationStateCreateInfo rasterizer({}, VK_FALSE, VK_FALSE,
-                                                            vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise,
-                                                            VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
+        vk::PipelineRasterizationStateCreateInfo rasterization;
+        rasterization.setLineWidth(1.0f);
 
         vk::PipelineMultisampleStateCreateInfo multisampling;
 
         vk::PipelineColorBlendAttachmentState colorBlendAttachment(VK_FALSE);
         colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
 
-        vk::PipelineColorBlendStateCreateInfo colorBlending({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment);
+        vk::PipelineColorBlendStateCreateInfo colorBlending;
+        colorBlending.setAttachments(colorBlendAttachment);
 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
 
-        vk::GraphicsPipelineCreateInfo pipelineInfo({}, shaderStages, &vertexInput, &inputAssembly, {},
-                                                    &viewportState, &rasterizer, &multisampling, {}, &colorBlending, {}, pipelineLayout.get(),
-                                                    nullptr, 0, {}, {});
-
         vk::PipelineRenderingCreateInfo renderingInfo;
-        renderingInfo.setColorAttachmentCount(1);
         renderingInfo.setColorAttachmentFormats(swapchainImageFormat);
-        pipelineInfo.setPNext(&renderingInfo);
 
-        vk::ResultValue<vk::UniquePipeline> result = device->createGraphicsPipelineUnique({}, pipelineInfo);
-        if (result.result != vk::Result::eSuccess) {
-            throw std::runtime_error("failed to create a pipeline!");
-        }
-        graphicsPipeline = std::move(result.value);
+        vk::GraphicsPipelineCreateInfo pipelineInfo;
+        pipelineInfo.setStages(shaderStages);
+        pipelineInfo.setPVertexInputState(&vertexInput);
+        pipelineInfo.setPInputAssemblyState(&inputAssembly);
+        pipelineInfo.setPViewportState(&viewportState);
+        pipelineInfo.setPRasterizationState(&rasterization);
+        pipelineInfo.setPMultisampleState(&multisampling);
+        pipelineInfo.setPColorBlendState(&colorBlending);
+        pipelineInfo.setLayout(pipelineLayout.get());
+        pipelineInfo.setPNext(&renderingInfo);
+        graphicsPipeline = std::move(device->createGraphicsPipelineUnique({}, pipelineInfo).value);
     }
 
     void createCommandPool()
