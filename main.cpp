@@ -18,14 +18,6 @@ const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector layers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-const std::vector deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
 struct SwapChainSupportDetails
 {
     vk::SurfaceCapabilitiesKHR capabilities;
@@ -132,6 +124,7 @@ private:
         auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
+        std::vector layers = { "VK_LAYER_KHRONOS_validation" };
         auto extensions = getRequiredExtensions();
 
         vk::InstanceCreateInfo createInfo;
@@ -174,8 +167,8 @@ private:
 
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
-        vk::DeviceCreateInfo createInfo({}, queueCreateInfo, {}, deviceExtensions, &deviceFeatures);
-        createInfo.setPEnabledLayerNames(layers);
+        const std::vector extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+        vk::DeviceCreateInfo createInfo({}, queueCreateInfo, {}, extensions, &deviceFeatures);
 
         device = physicalDevice.createDeviceUnique(createInfo);
         queue = device->getQueue(queueFamilyIndex, 0);
