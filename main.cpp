@@ -210,6 +210,7 @@ public:
 
         // create command pool
         vk::CommandPoolCreateInfo commandPoolInfo;
+        commandPoolInfo.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
         commandPoolInfo.setQueueFamilyIndex(queueFamilyIndex);
         vk::UniqueCommandPool commandPool = device->createCommandPoolUnique(commandPoolInfo);
 
@@ -219,38 +220,6 @@ public:
         commandBufferInfo.setCommandBufferCount(swapchainImageCount);
         std::vector commandBuffers = device->allocateCommandBuffersUnique(commandBufferInfo);
 
-        for (size_t i = 0; i < commandBuffers.size(); i++) {
-            commandBuffers[i]->begin(vk::CommandBufferBeginInfo());
-
-            vk::RenderingAttachmentInfo colorAttachment;
-            colorAttachment.setImageView(swapchainImageViews[i].get());
-            colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
-
-            vk::RenderingInfo renderingInfo;
-            renderingInfo.setRenderArea({ {0, 0}, swapchainExtent });
-            renderingInfo.setLayerCount(1);
-            renderingInfo.setColorAttachments(colorAttachment);
-            commandBuffers[i]->beginRendering(renderingInfo);
-
-            commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
-            commandBuffers[i]->draw(3, 1, 0, 0);
-
-            commandBuffers[i]->endRendering();
-
-            vk::ImageMemoryBarrier imageMemoryBarrier;
-            imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
-            imageMemoryBarrier.setNewLayout(vk::ImageLayout::ePresentSrcKHR);
-            imageMemoryBarrier.setImage(swapchainImages[i]);
-            imageMemoryBarrier.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
-
-            commandBuffers[i]->pipelineBarrier(
-                vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                vk::PipelineStageFlagBits::eBottomOfPipe,
-                {}, {}, {}, imageMemoryBarrier);
-
-            commandBuffers[i]->end();
-        }
-
         // main loop
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -259,6 +228,36 @@ public:
             vk::UniqueSemaphore rendered = device->createSemaphoreUnique({});
 
             uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, acquired.get()).value;
+
+            commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo());
+            {
+                vk::RenderingAttachmentInfo colorAttachment;
+                colorAttachment.setImageView(swapchainImageViews[imageIndex].get());
+                colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
+
+                vk::RenderingInfo renderingInfo;
+                renderingInfo.setRenderArea({ {0, 0}, swapchainExtent });
+                renderingInfo.setLayerCount(1);
+                renderingInfo.setColorAttachments(colorAttachment);
+                commandBuffers[imageIndex]->beginRendering(renderingInfo);
+                {
+                    commandBuffers[imageIndex]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
+                    commandBuffers[imageIndex]->draw(3, 1, 0, 0);
+                }
+                commandBuffers[imageIndex]->endRendering();
+
+                vk::ImageMemoryBarrier imageMemoryBarrier;
+                imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+                imageMemoryBarrier.setNewLayout(vk::ImageLayout::ePresentSrcKHR);
+                imageMemoryBarrier.setImage(swapchainImages[imageIndex]);
+                imageMemoryBarrier.setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
+
+                commandBuffers[imageIndex]->pipelineBarrier(
+                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                    vk::PipelineStageFlagBits::eBottomOfPipe,
+                    {}, {}, {}, imageMemoryBarrier);
+            }
+            commandBuffers[imageIndex]->end();
 
             vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
             vk::SubmitInfo submitInfo;
@@ -281,7 +280,6 @@ public:
         }
         device->waitIdle();
 
-        // cleanup
         glfwDestroyWindow(window);
         glfwTerminate();
     }
