@@ -55,11 +55,10 @@ private:
 
     vk::UniqueSwapchainKHR swapchain;
     std::vector<vk::Image> swapchainImages;
+    std::vector<vk::UniqueImageView> swapchainImageViews;
     uint32_t swapchainImageCount;
     vk::Format swapchainImageFormat;
     vk::Extent2D swapchainExtent;
-
-    std::vector<vk::UniqueImageView> swapchainImageViews;
 
     vk::UniquePipelineLayout pipelineLayout;
     vk::UniquePipeline graphicsPipeline;
@@ -67,8 +66,6 @@ private:
     vk::UniqueCommandPool commandPool;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
 
-    std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
-    std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
     size_t currentFrame = 0;
 
     void initVulkan()
@@ -83,7 +80,6 @@ private:
         createGraphicsPipeline();
         createCommandPool();
         createCommandBuffers();
-        createSyncObjects();
     }
 
     void createInstance()
@@ -93,7 +89,7 @@ private:
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
         std::vector layers{ "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_monitor" };
-        auto extensions = getRequiredExtensions();
+        std::vector extensions = getRequiredExtensions();
 
         vk::ApplicationInfo appInfo;
         appInfo.setApiVersion(VK_API_VERSION_1_3);
@@ -290,27 +286,25 @@ private:
         }
     }
 
-    void createSyncObjects()
-    {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            imageAvailableSemaphores[i] = device->createSemaphoreUnique({});
-            renderFinishedSemaphores[i] = device->createSemaphoreUnique({});
-        }
-    }
-
     void drawFrame()
     {
-        uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get()).value;
-        vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-        vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrame].get(), waitStage,
-                                  commandBuffers[imageIndex].get(), renderFinishedSemaphores[currentFrame].get());
+        vk::UniqueSemaphore acquired = device->createSemaphoreUnique({});
+        vk::UniqueSemaphore rendered = device->createSemaphoreUnique({});
 
+        uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, acquired.get()).value;
+
+        vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        vk::SubmitInfo submitInfo;
+        submitInfo.setWaitSemaphores(acquired.get());
+        submitInfo.setSignalSemaphores(rendered.get());
+        submitInfo.setWaitDstStageMask(waitStage);
+        submitInfo.setCommandBuffers(commandBuffers[imageIndex].get());
         queue.submit(submitInfo);
 
-        vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrame].get(), swapchain.get(), imageIndex);
+        vk::PresentInfoKHR presentInfo;
+        presentInfo.setWaitSemaphores(rendered.get());
+        presentInfo.setSwapchains(swapchain.get());
+        presentInfo.setImageIndices(imageIndex);
 
         if (queue.presentKHR(presentInfo) != vk::Result::eSuccess) {
             throw std::runtime_error("failed to present.");
