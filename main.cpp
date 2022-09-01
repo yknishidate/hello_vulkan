@@ -8,7 +8,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 std::vector<char> readFile(const std::string& filename)
 {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    std::ifstream file{ filename, std::ios::ate | std::ios::binary };
     if (!file.is_open()) {
         std::cerr << "failed to open file." << std::endl;
     }
@@ -78,7 +78,7 @@ int main()
     if (glfwCreateWindowSurface(instance.get(), window, nullptr, &_surface) != VK_SUCCESS) {
         std::cerr << "failed to create window surface." << std::endl;
     }
-    vk::UniqueSurfaceKHR surface = vk::UniqueSurfaceKHR(_surface, { instance.get() });
+    vk::UniqueSurfaceKHR surface = vk::UniqueSurfaceKHR{ _surface, { instance.get() } };
 
     // find queue family
     uint32_t queueFamilyIndex;
@@ -97,7 +97,7 @@ int main()
     queueCreateInfo.setQueueFamilyIndex(queueFamilyIndex);
     queueCreateInfo.setQueuePriorities(queuePriority);
 
-    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures(true);
+    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{ true };
 
     std::vector deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     vk::DeviceCreateInfo deviceInfo;
@@ -135,8 +135,8 @@ int main()
     // create graphics pipeline
     auto vertCode = readFile("../shaders/vert.spv");
     auto fragCode = readFile("../shaders/frag.spv");
-    vk::ShaderModuleCreateInfo vertModuleInfo({}, vertCode.size(), reinterpret_cast<const uint32_t*>(vertCode.data()));
-    vk::ShaderModuleCreateInfo fragModuleInfo({}, fragCode.size(), reinterpret_cast<const uint32_t*>(fragCode.data()));
+    vk::ShaderModuleCreateInfo vertModuleInfo{ {}, vertCode.size(), reinterpret_cast<const uint32_t*>(vertCode.data()) };
+    vk::ShaderModuleCreateInfo fragModuleInfo{ {}, fragCode.size(), reinterpret_cast<const uint32_t*>(fragCode.data()) };
 
     vk::UniqueShaderModule vertShaderModule = device->createShaderModuleUnique(vertModuleInfo);
     vk::UniqueShaderModule fragShaderModule = device->createShaderModuleUnique(fragModuleInfo);
@@ -150,11 +150,11 @@ int main()
     shaderStages[1].setPName("main");
 
     vk::PipelineVertexInputStateCreateInfo vertexInput;
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly({}, vk::PrimitiveTopology::eTriangleList);
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{ {}, vk::PrimitiveTopology::eTriangleList };
 
-    vk::Viewport viewport(0.0f, 0.0f, width, height);
-    vk::Rect2D scissor({ 0, 0 }, { width, height });
-    vk::PipelineViewportStateCreateInfo viewportState({}, viewport, scissor);
+    vk::Viewport viewport{ 0.0f, 0.0f, width, height };
+    vk::Rect2D scissor{ { 0, 0 }, { width, height } };
+    vk::PipelineViewportStateCreateInfo viewportState{ {}, viewport, scissor };
 
     vk::PipelineRasterizationStateCreateInfo rasterization;
     rasterization.setLineWidth(1.0f);
@@ -202,10 +202,10 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo());
+        vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, acquired.get()).value;
 
-        commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo());
+        commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo{});
         {
             vk::RenderingAttachmentInfo colorAttachment;
             colorAttachment.setImageView(swapchainImageViews[imageIndex].get());
@@ -233,7 +233,7 @@ int main()
         }
         commandBuffers[imageIndex]->end();
 
-        vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo());
+        vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
         vk::SubmitInfo submitInfo;
         submitInfo.setWaitSemaphores(acquired.get());
