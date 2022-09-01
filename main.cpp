@@ -13,8 +13,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
 class HelloTriangleApplication
 {
 public:
@@ -65,8 +63,6 @@ private:
 
     vk::UniqueCommandPool commandPool;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
-
-    size_t currentFrame = 0;
 
     void initVulkan()
     {
@@ -310,7 +306,6 @@ private:
             throw std::runtime_error("failed to present.");
         }
 
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         queue.waitIdle();
     }
 
