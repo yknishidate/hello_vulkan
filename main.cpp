@@ -97,8 +97,7 @@ int main()
     queueCreateInfo.setQueueFamilyIndex(queueFamilyIndex);
     queueCreateInfo.setQueuePriorities(queuePriority);
 
-    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
-    dynamicRenderingFeatures.setDynamicRendering(true);
+    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures(true);
 
     std::vector deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     vk::DeviceCreateInfo deviceInfo;
@@ -151,20 +150,11 @@ int main()
     shaderStages[1].setPName("main");
 
     vk::PipelineVertexInputStateCreateInfo vertexInput;
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly({}, vk::PrimitiveTopology::eTriangleList);
 
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
-    inputAssembly.setTopology(vk::PrimitiveTopology::eTriangleList);
-
-    vk::Viewport viewport;
-    viewport.setWidth(width);
-    viewport.setHeight(height);
-
-    vk::Rect2D scissor;
-    scissor.setExtent({ width, height });
-
-    vk::PipelineViewportStateCreateInfo viewportState;
-    viewportState.setViewports(viewport);
-    viewportState.setScissors(scissor);
+    vk::Viewport viewport(0.0f, 0.0f, width, height);
+    vk::Rect2D scissor({ 0, 0 }, { width, height });
+    vk::PipelineViewportStateCreateInfo viewportState({}, viewport, scissor);
 
     vk::PipelineRasterizationStateCreateInfo rasterization;
     rasterization.setLineWidth(1.0f);
@@ -178,11 +168,11 @@ int main()
     vk::PipelineColorBlendStateCreateInfo colorBlending;
     colorBlending.setAttachments(colorBlendAttachment);
 
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
     vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
 
-    vk::PipelineRenderingCreateInfo renderingInfo;
-    renderingInfo.setColorAttachmentFormats(swapchainImageFormat);
+    vk::PipelineRenderingCreateInfo pipelineRenderingInfo;
+    pipelineRenderingInfo.setColorAttachmentFormats(swapchainImageFormat);
 
     vk::GraphicsPipelineCreateInfo pipelineInfo;
     pipelineInfo.setStages(shaderStages);
@@ -193,7 +183,7 @@ int main()
     pipelineInfo.setPMultisampleState(&multisampling);
     pipelineInfo.setPColorBlendState(&colorBlending);
     pipelineInfo.setLayout(pipelineLayout.get());
-    pipelineInfo.setPNext(&renderingInfo);
+    pipelineInfo.setPNext(&pipelineRenderingInfo);
     vk::UniquePipeline graphicsPipeline = std::move(device->createGraphicsPipelineUnique({}, pipelineInfo).value);
 
     // create command pool
@@ -212,7 +202,7 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        vk::UniqueSemaphore acquired = device->createSemaphoreUnique({});
+        vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo());
         uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, acquired.get()).value;
 
         commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo());
@@ -243,7 +233,7 @@ int main()
         }
         commandBuffers[imageIndex]->end();
 
-        vk::UniqueSemaphore rendered = device->createSemaphoreUnique({});
+        vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo());
         vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
         vk::SubmitInfo submitInfo;
         submitInfo.setWaitSemaphores(acquired.get());
