@@ -218,8 +218,9 @@ private:
 
         vk::PipelineMultisampleStateCreateInfo multisampling;
 
-        vk::PipelineColorBlendAttachmentState colorBlendAttachment(VK_FALSE);
-        colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+        vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+        colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                                               vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
 
         vk::PipelineColorBlendStateCreateInfo colorBlending;
         colorBlending.setAttachments(colorBlendAttachment);
@@ -305,7 +306,10 @@ private:
 
     void drawFrame()
     {
-        device->waitForFences(inFlightFences[currentFrame].get(), true, UINT64_MAX);
+        if (device->waitForFences(inFlightFences[currentFrame].get(), true, UINT64_MAX) != vk::Result::eSuccess) {
+            throw std::runtime_error("failed to wait for fences.");
+        }
+
         device->resetFences(inFlightFences[currentFrame].get());
 
         uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get()).value;
@@ -317,7 +321,9 @@ private:
 
         vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrame].get(), swapchain.get(), imageIndex);
 
-        queue.presentKHR(presentInfo);
+        if (queue.presentKHR(presentInfo) != vk::Result::eSuccess) {
+            throw std::runtime_error("failed to present.");
+        }
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
