@@ -69,7 +69,6 @@ private:
 
     std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
     std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
-    std::vector<vk::UniqueFence> inFlightFences;
     size_t currentFrame = 0;
 
     void initVulkan()
@@ -295,29 +294,21 @@ private:
     {
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             imageAvailableSemaphores[i] = device->createSemaphoreUnique({});
             renderFinishedSemaphores[i] = device->createSemaphoreUnique({});
-            inFlightFences[i] = device->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
         }
     }
 
     void drawFrame()
     {
-        if (device->waitForFences(inFlightFences[currentFrame].get(), true, UINT64_MAX) != vk::Result::eSuccess) {
-            throw std::runtime_error("failed to wait for fences.");
-        }
-
-        device->resetFences(inFlightFences[currentFrame].get());
-
         uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, imageAvailableSemaphores[currentFrame].get()).value;
         vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
         vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrame].get(), waitStage,
                                   commandBuffers[imageIndex].get(), renderFinishedSemaphores[currentFrame].get());
 
-        queue.submit(submitInfo, inFlightFences[currentFrame].get());
+        queue.submit(submitInfo);
 
         vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrame].get(), swapchain.get(), imageIndex);
 
@@ -326,6 +317,7 @@ private:
         }
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        queue.waitIdle();
     }
 
     vk::UniqueShaderModule createShaderModule(const std::string& path)
