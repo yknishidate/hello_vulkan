@@ -8,7 +8,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 std::vector<char> readFile(const std::string& filename)
 {
-    std::ifstream file{ filename, std::ios::ate | std::ios::binary };
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "failed to open file." << std::endl;
     }
