@@ -75,10 +75,10 @@ int main()
 
     // create surface
     VkSurfaceKHR _surface;
-    if (glfwCreateWindowSurface(instance.get(), window, nullptr, &_surface) != VK_SUCCESS) {
+    if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface) != VK_SUCCESS) {
         std::cerr << "failed to create window surface." << std::endl;
     }
-    vk::UniqueSurfaceKHR surface = vk::UniqueSurfaceKHR{ _surface, { instance.get() } };
+    vk::UniqueSurfaceKHR surface = vk::UniqueSurfaceKHR{ _surface, { *instance } };
 
     // find queue family
     uint32_t queueFamilyIndex;
@@ -112,14 +112,14 @@ int main()
     vk::Format swapchainImageFormat = vk::Format::eB8G8R8A8Unorm;
 
     vk::SwapchainCreateInfoKHR swapchainInfo;
-    swapchainInfo.setSurface(surface.get());
+    swapchainInfo.setSurface(*surface);
     swapchainInfo.setMinImageCount(swapchainImageCount);
     swapchainInfo.setImageFormat(swapchainImageFormat);
     swapchainInfo.setImageExtent({ width, height });
     swapchainInfo.setImageArrayLayers(1);
     swapchainInfo.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
     vk::UniqueSwapchainKHR swapchain = device->createSwapchainKHRUnique(swapchainInfo);
-    std::vector swapchainImages = device->getSwapchainImagesKHR(swapchain.get());
+    std::vector swapchainImages = device->getSwapchainImagesKHR(*swapchain);
 
     // create image views
     std::vector<vk::UniqueImageView> swapchainImageViews(swapchainImageCount);
@@ -143,10 +143,10 @@ int main()
 
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
     shaderStages[0].setStage(vk::ShaderStageFlagBits::eVertex);
-    shaderStages[0].setModule(vertShaderModule.get());
+    shaderStages[0].setModule(*vertShaderModule);
     shaderStages[0].setPName("main");
     shaderStages[1].setStage(vk::ShaderStageFlagBits::eFragment);
-    shaderStages[1].setModule(fragShaderModule.get());
+    shaderStages[1].setModule(*fragShaderModule);
     shaderStages[1].setPName("main");
 
     vk::PipelineVertexInputStateCreateInfo vertexInput;
@@ -182,7 +182,7 @@ int main()
     pipelineInfo.setPRasterizationState(&rasterization);
     pipelineInfo.setPMultisampleState(&multisampling);
     pipelineInfo.setPColorBlendState(&colorBlending);
-    pipelineInfo.setLayout(pipelineLayout.get());
+    pipelineInfo.setLayout(*pipelineLayout);
     pipelineInfo.setPNext(&pipelineRenderingInfo);
     vk::UniquePipeline graphicsPipeline = std::move(device->createGraphicsPipelineUnique({}, pipelineInfo).value);
 
@@ -194,7 +194,7 @@ int main()
 
     // create command buffers
     vk::CommandBufferAllocateInfo commandBufferInfo;
-    commandBufferInfo.setCommandPool(commandPool.get());
+    commandBufferInfo.setCommandPool(*commandPool);
     commandBufferInfo.setCommandBufferCount(swapchainImageCount);
     std::vector commandBuffers = device->allocateCommandBuffersUnique(commandBufferInfo);
 
@@ -203,12 +203,12 @@ int main()
         glfwPollEvents();
 
         vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
-        uint32_t imageIndex = device->acquireNextImageKHR(swapchain.get(), UINT64_MAX, acquired.get()).value;
+        uint32_t imageIndex = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *acquired).value;
 
         commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo{});
         {
             vk::RenderingAttachmentInfo colorAttachment;
-            colorAttachment.setImageView(swapchainImageViews[imageIndex].get());
+            colorAttachment.setImageView(*swapchainImageViews[imageIndex]);
             colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
 
             vk::RenderingInfo renderingInfo;
@@ -216,7 +216,7 @@ int main()
             renderingInfo.setLayerCount(1);
             renderingInfo.setColorAttachments(colorAttachment);
             commandBuffers[imageIndex]->beginRendering(renderingInfo);
-            commandBuffers[imageIndex]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
+            commandBuffers[imageIndex]->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
             commandBuffers[imageIndex]->draw(3, 1, 0, 0);
             commandBuffers[imageIndex]->endRendering();
 
@@ -234,17 +234,17 @@ int main()
         commandBuffers[imageIndex]->end();
 
         vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
-        vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
         vk::SubmitInfo submitInfo;
-        submitInfo.setWaitSemaphores(acquired.get());
-        submitInfo.setSignalSemaphores(rendered.get());
+        submitInfo.setWaitSemaphores(*acquired);
+        submitInfo.setSignalSemaphores(*rendered);
         submitInfo.setWaitDstStageMask(waitStage);
-        submitInfo.setCommandBuffers(commandBuffers[imageIndex].get());
+        submitInfo.setCommandBuffers(*commandBuffers[imageIndex]);
         queue.submit(submitInfo);
 
         vk::PresentInfoKHR presentInfo;
-        presentInfo.setWaitSemaphores(rendered.get());
-        presentInfo.setSwapchains(swapchain.get());
+        presentInfo.setWaitSemaphores(*rendered);
+        presentInfo.setSwapchains(*swapchain);
         presentInfo.setImageIndices(imageIndex);
         if (queue.presentKHR(presentInfo) != vk::Result::eSuccess) {
             std::cerr << "failed to present." << std::endl;
