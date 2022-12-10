@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(easy_vulkan)
+project(hello_vulkan)
 set(CMAKE_CXX_STANDARD 20)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
