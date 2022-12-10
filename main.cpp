@@ -160,7 +160,7 @@ int main() {
                             .setPColorBlendState(&colorBlending)
                             .setLayout(*pipelineLayout)
                             .setPNext(&pipelineRenderingInfo);
-    vk::UniquePipeline graphicsPipeline = std::move(device->createGraphicsPipelineUnique({}, pipelineInfo).value);
+    vk::UniquePipeline graphicsPipeline = device->createGraphicsPipelineUnique({}, pipelineInfo).value;
 
     vk::UniqueCommandPool commandPool = device->createCommandPoolUnique(
         vk::CommandPoolCreateInfo{}
