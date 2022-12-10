@@ -5,5 +5,4 @@ Release/
 .editorconfig
 compile.bat
 .vscode/
-*.spv
 build
