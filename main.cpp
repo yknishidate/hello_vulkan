@@ -133,23 +133,18 @@ int main() {
     vk::Rect2D scissor{{0, 0}, {width, height}};
     vk::PipelineViewportStateCreateInfo viewportState{{}, viewport, scissor};
 
-    auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
-                             .setLineWidth(1.0f);
+    vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo());
 
     vk::PipelineMultisampleStateCreateInfo multisampling;
-
+    auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
+                             .setLineWidth(1.0f);
     auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState{}
                                     .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
                                                        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
-
     auto colorBlending = vk::PipelineColorBlendStateCreateInfo{}
                              .setAttachments(colorBlendAttachment);
-
-    vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo());
-
     auto pipelineRenderingInfo = vk::PipelineRenderingCreateInfo{}
                                      .setColorAttachmentFormats(swapchainImageFormat);
-
     auto pipelineInfo = vk::GraphicsPipelineCreateInfo{}
                             .setStages(shaderStages)
                             .setPVertexInputState(&vertexInput)
@@ -175,7 +170,7 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+        vk::UniqueSemaphore acquired = device->createSemaphoreUnique({});
         uint32_t imageIndex = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *acquired).value;
 
         auto colorAttachment = vk::RenderingAttachmentInfo{}
@@ -201,7 +196,7 @@ int main() {
                                                     {}, {}, {}, imageMemoryBarrier);
         commandBuffers[imageIndex]->end();
 
-        vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+        vk::UniqueSemaphore rendered = device->createSemaphoreUnique({});
         vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
         queue.submit(vk::SubmitInfo{}
                          .setWaitSemaphores(*acquired)
