@@ -12,7 +12,7 @@ std::vector<uint32_t> readFile(const std::string& filename) {
         std::cerr << "failed to open file." << std::endl;
     }
     size_t fileSize = file.tellg();
-    std::vector<uint32_t> buffer(fileSize / 4);
+    std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
     file.seekg(0);
     file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
     file.close();
@@ -135,7 +135,7 @@ int main() {
 
     vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo());
 
-    vk::PipelineMultisampleStateCreateInfo multisampling;
+    auto multisampling = vk::PipelineMultisampleStateCreateInfo{};
     auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
                              .setLineWidth(1.0f);
     auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState{}
@@ -170,7 +170,7 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        vk::UniqueSemaphore acquired = device->createSemaphoreUnique({});
+        vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         uint32_t imageIndex = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *acquired).value;
 
         auto colorAttachment = vk::RenderingAttachmentInfo{}
@@ -196,7 +196,7 @@ int main() {
                                                     {}, {}, {}, imageMemoryBarrier);
         commandBuffers[imageIndex]->end();
 
-        vk::UniqueSemaphore rendered = device->createSemaphoreUnique({});
+        vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
         queue.submit(vk::SubmitInfo{}
                          .setWaitSemaphores(*acquired)
