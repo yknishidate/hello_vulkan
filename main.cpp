@@ -1,4 +1,5 @@
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_NO_CONSTRUCTORS
 #include <fstream>
 #include <iostream>
 #include <vulkan/vulkan.hpp>
@@ -29,8 +30,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsMessengerCallback(
 }
 
 int main() {
-    const uint32_t width = 800;
-    const uint32_t height = 600;
+    uint32_t width = 800;
+    uint32_t height = 600;
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -47,21 +48,20 @@ int main() {
     std::vector instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
     instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-    auto appInfo = vk::ApplicationInfo{}
-                       .setApiVersion(VK_API_VERSION_1_3);
-
-    vk::UniqueInstance instance = vk::createInstanceUnique(
-        vk::InstanceCreateInfo{}
-            .setPApplicationInfo(&appInfo)
-            .setPEnabledLayerNames(instanceLayers)
-            .setPEnabledExtensionNames(instanceExtensions));
+    vk::ApplicationInfo appInfo;
+    appInfo.setApiVersion(VK_API_VERSION_1_3);
+    vk::InstanceCreateInfo instanceInfo;
+    instanceInfo.setPApplicationInfo(&appInfo);
+    instanceInfo.setPEnabledLayerNames(instanceLayers);
+    instanceInfo.setPEnabledExtensionNames(instanceExtensions);
+    vk::UniqueInstance instance = vk::createInstanceUnique(instanceInfo);
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger = instance->createDebugUtilsMessengerEXTUnique(
-        vk::DebugUtilsMessengerCreateInfoEXT{}
-            .setMessageSeverity(vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
-            .setMessageType(vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation)
-            .setPfnUserCallback(&debugUtilsMessengerCallback));
+    vk::DebugUtilsMessengerCreateInfoEXT messengerInfo;
+    messengerInfo.setMessageSeverity(vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+    messengerInfo.setMessageType(vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+    messengerInfo.setPfnUserCallback(&debugUtilsMessengerCallback);
+    vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger = instance->createDebugUtilsMessengerEXTUnique(messengerInfo);
 
     vk::PhysicalDevice physicalDevice = instance->enumeratePhysicalDevices().front();
 
@@ -82,90 +82,110 @@ int main() {
     }
 
     float queuePriority = 1.0f;
-    auto queueCreateInfo = vk::DeviceQueueCreateInfo{}
-                               .setQueueFamilyIndex(queueFamilyIndex)
-                               .setQueuePriorities(queuePriority);
+    vk::DeviceQueueCreateInfo queueCreateInfo;
+    queueCreateInfo.setQueueFamilyIndex(queueFamilyIndex);
+    queueCreateInfo.setQueuePriorities(queuePriority);
 
-    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{true};
+    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures;
+    dynamicRenderingFeatures.setDynamicRendering(true);
+
     std::vector deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    vk::UniqueDevice device = physicalDevice.createDeviceUnique(
-        vk::DeviceCreateInfo{}
-            .setQueueCreateInfos(queueCreateInfo)
-            .setPEnabledExtensionNames(deviceExtensions)
-            .setPNext(&dynamicRenderingFeatures));
+
+    vk::DeviceCreateInfo deviceInfo;
+    deviceInfo.setQueueCreateInfos(queueCreateInfo);
+    deviceInfo.setPEnabledExtensionNames(deviceExtensions);
+    deviceInfo.setPNext(&dynamicRenderingFeatures);
+    vk::UniqueDevice device = physicalDevice.createDeviceUnique(deviceInfo);
     vk::Queue queue = device->getQueue(queueFamilyIndex, 0);
 
     uint32_t swapchainImageCount = 3;
     vk::Format swapchainImageFormat = vk::Format::eB8G8R8A8Unorm;
-    vk::UniqueSwapchainKHR swapchain = device->createSwapchainKHRUnique(
-        vk::SwapchainCreateInfoKHR{}
-            .setSurface(*surface)
-            .setMinImageCount(swapchainImageCount)
-            .setImageFormat(swapchainImageFormat)
-            .setImageExtent({width, height})
-            .setImageArrayLayers(1)
-            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment));
+    vk::SwapchainCreateInfoKHR swapchainInfo;
+    swapchainInfo.setSurface(*surface);
+    swapchainInfo.setMinImageCount(swapchainImageCount);
+    swapchainInfo.setImageFormat(swapchainImageFormat);
+    swapchainInfo.setImageExtent({width, height});
+    swapchainInfo.setImageArrayLayers(1);
+    swapchainInfo.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
+    vk::UniqueSwapchainKHR swapchain = device->createSwapchainKHRUnique(swapchainInfo);
     std::vector swapchainImages = device->getSwapchainImagesKHR(*swapchain);
 
     std::vector<vk::UniqueImageView> swapchainImageViews(swapchainImageCount);
     for (size_t i = 0; i < swapchainImages.size(); i++) {
-        swapchainImageViews[i] = device->createImageViewUnique(
-            vk::ImageViewCreateInfo{}
-                .setImage(swapchainImages[i])
-                .setViewType(vk::ImageViewType::e2D)
-                .setFormat(swapchainImageFormat)
-                .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}));
+        vk::ImageViewCreateInfo viewInfo;
+        viewInfo.setImage(swapchainImages[i]);
+        viewInfo.setViewType(vk::ImageViewType::e2D);
+        viewInfo.setFormat(swapchainImageFormat);
+        viewInfo.setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+        swapchainImageViews[i] = device->createImageViewUnique(viewInfo);
     }
 
-    auto vertCode = readFile("../shaders/base.vert.spv");
-    auto fragCode = readFile("../shaders/base.frag.spv");
-    vk::UniqueShaderModule vertShaderModule = device->createShaderModuleUnique({{}, vertCode});
-    vk::UniqueShaderModule fragShaderModule = device->createShaderModuleUnique({{}, fragCode});
+    std::vector vertCode = readFile("../shaders/base.vert.spv");
+    std::vector fragCode = readFile("../shaders/base.frag.spv");
+    vk::ShaderModuleCreateInfo vertShaderInfo;
+    vk::ShaderModuleCreateInfo fragShaderInfo;
+    vertShaderInfo.setCode(vertCode);
+    fragShaderInfo.setCode(fragCode);
+    vk::UniqueShaderModule vertShaderModule = device->createShaderModuleUnique(vertShaderInfo);
+    vk::UniqueShaderModule fragShaderModule = device->createShaderModuleUnique(fragShaderInfo);
 
-    std::array shaderStages{
-        vk::PipelineShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eVertex, *vertShaderModule, "main"},
-        vk::PipelineShaderStageCreateInfo{{}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main"}};
-
-    vk::PipelineVertexInputStateCreateInfo vertexInput;
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{{}, vk::PrimitiveTopology::eTriangleList};
-
-    vk::Viewport viewport{0.0f, 0.0f, width, height};
-    vk::Rect2D scissor{{0, 0}, {width, height}};
-    vk::PipelineViewportStateCreateInfo viewportState{{}, viewport, scissor};
+    std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
+    shaderStages[0].setStage(vk::ShaderStageFlagBits::eVertex);
+    shaderStages[0].setModule(*vertShaderModule);
+    shaderStages[0].setPName("main");
+    shaderStages[1].setStage(vk::ShaderStageFlagBits::eFragment);
+    shaderStages[1].setModule(*fragShaderModule);
+    shaderStages[1].setPName("main");
 
     vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo());
 
-    auto multisampling = vk::PipelineMultisampleStateCreateInfo{};
-    auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
-                             .setLineWidth(1.0f);
-    auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState{}
-                                    .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                                                       vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
-    auto colorBlending = vk::PipelineColorBlendStateCreateInfo{}
-                             .setAttachments(colorBlendAttachment);
-    auto pipelineRenderingInfo = vk::PipelineRenderingCreateInfo{}
-                                     .setColorAttachmentFormats(swapchainImageFormat);
-    auto pipelineInfo = vk::GraphicsPipelineCreateInfo{}
-                            .setStages(shaderStages)
-                            .setPVertexInputState(&vertexInput)
-                            .setPInputAssemblyState(&inputAssembly)
-                            .setPViewportState(&viewportState)
-                            .setPRasterizationState(&rasterization)
-                            .setPMultisampleState(&multisampling)
-                            .setPColorBlendState(&colorBlending)
-                            .setLayout(*pipelineLayout)
-                            .setPNext(&pipelineRenderingInfo);
+    vk::PipelineVertexInputStateCreateInfo vertexInput;
+
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+    inputAssembly.setTopology(vk::PrimitiveTopology::eTriangleList);
+
+    vk::Viewport viewport{0.0f, 0.0f, width, height};
+    vk::Rect2D scissor{{0, 0}, {width, height}};
+    vk::PipelineViewportStateCreateInfo viewportState;
+    viewportState.setViewports(viewport);
+    viewportState.setScissors(scissor);
+
+    vk::PipelineMultisampleStateCreateInfo multisampling;
+
+    vk::PipelineRasterizationStateCreateInfo rasterization;
+    rasterization.setLineWidth(1.0f);
+
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+    colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                                           vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending;
+    colorBlending.setAttachments(colorBlendAttachment);
+
+    vk::PipelineRenderingCreateInfo pipelineRenderingInfo;
+    pipelineRenderingInfo.setColorAttachmentFormats(swapchainImageFormat);
+
+    vk::GraphicsPipelineCreateInfo pipelineInfo;
+    pipelineInfo.setStages(shaderStages);
+    pipelineInfo.setPVertexInputState(&vertexInput);
+    pipelineInfo.setPInputAssemblyState(&inputAssembly);
+    pipelineInfo.setPViewportState(&viewportState);
+    pipelineInfo.setPRasterizationState(&rasterization);
+    pipelineInfo.setPMultisampleState(&multisampling);
+    pipelineInfo.setPColorBlendState(&colorBlending);
+    pipelineInfo.setLayout(*pipelineLayout);
+    pipelineInfo.setPNext(&pipelineRenderingInfo);
     vk::UniquePipeline graphicsPipeline = device->createGraphicsPipelineUnique({}, pipelineInfo).value;
 
     vk::UniqueCommandPool commandPool = device->createCommandPoolUnique(
         vk::CommandPoolCreateInfo{}
-            .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-            .setQueueFamilyIndex(queueFamilyIndex));
+        .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+        .setQueueFamilyIndex(queueFamilyIndex));
 
     std::vector commandBuffers = device->allocateCommandBuffersUnique(
         vk::CommandBufferAllocateInfo{}
-            .setCommandPool(*commandPool)
-            .setCommandBufferCount(swapchainImageCount));
+        .setCommandPool(*commandPool)
+        .setCommandBufferCount(swapchainImageCount));
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -173,24 +193,26 @@ int main() {
         vk::UniqueSemaphore acquired = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         uint32_t imageIndex = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *acquired).value;
 
-        auto colorAttachment = vk::RenderingAttachmentInfo{}
-                                   .setImageView(*swapchainImageViews[imageIndex])
-                                   .setImageLayout(vk::ImageLayout::eAttachmentOptimal);
+        vk::RenderingAttachmentInfo colorAttachment;
+        colorAttachment.setImageView(*swapchainImageViews[imageIndex]);
+        colorAttachment.setImageLayout(vk::ImageLayout::eAttachmentOptimal);
+
+        vk::RenderingInfo renderingInfo;
+        renderingInfo.setRenderArea({{0, 0}, {width, height}});
+        renderingInfo.setLayerCount(1);
+        renderingInfo.setColorAttachments(colorAttachment);
+
+        vk::ImageMemoryBarrier imageMemoryBarrier;
+        imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+        imageMemoryBarrier.setNewLayout(vk::ImageLayout::ePresentSrcKHR);
+        imageMemoryBarrier.setImage(swapchainImages[imageIndex]);
+        imageMemoryBarrier.setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
 
         commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo{});
-        commandBuffers[imageIndex]->beginRendering(vk::RenderingInfo{}
-                                                       .setRenderArea({{0, 0}, {width, height}})
-                                                       .setLayerCount(1)
-                                                       .setColorAttachments(colorAttachment));
+        commandBuffers[imageIndex]->beginRendering(renderingInfo);
         commandBuffers[imageIndex]->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
         commandBuffers[imageIndex]->draw(3, 1, 0, 0);
         commandBuffers[imageIndex]->endRendering();
-
-        auto imageMemoryBarrier = vk::ImageMemoryBarrier{}
-                                      .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-                                      .setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-                                      .setImage(swapchainImages[imageIndex])
-                                      .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
         commandBuffers[imageIndex]->pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
                                                     vk::PipelineStageFlagBits::eBottomOfPipe,
                                                     {}, {}, {}, imageMemoryBarrier);
@@ -198,16 +220,17 @@ int main() {
 
         vk::UniqueSemaphore rendered = device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-        queue.submit(vk::SubmitInfo{}
-                         .setWaitSemaphores(*acquired)
-                         .setSignalSemaphores(*rendered)
-                         .setWaitDstStageMask(waitStage)
-                         .setCommandBuffers(*commandBuffers[imageIndex]));
+        vk::SubmitInfo submitInfo;
+        submitInfo.setWaitSemaphores(*acquired);
+        submitInfo.setSignalSemaphores(*rendered);
+        submitInfo.setWaitDstStageMask(waitStage);
+        submitInfo.setCommandBuffers(*commandBuffers[imageIndex]);
+        queue.submit(submitInfo);
 
-        auto presentInfo = vk::PresentInfoKHR{}
-                               .setWaitSemaphores(*rendered)
-                               .setSwapchains(*swapchain)
-                               .setImageIndices(imageIndex);
+        vk::PresentInfoKHR presentInfo;
+        presentInfo.setWaitSemaphores(*rendered);
+        presentInfo.setSwapchains(*swapchain);
+        presentInfo.setImageIndices(imageIndex);
         if (queue.presentKHR(presentInfo) != vk::Result::eSuccess) {
             std::cerr << "failed to present." << std::endl;
         }
