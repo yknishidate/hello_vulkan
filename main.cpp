@@ -140,28 +140,23 @@ int main() {
     vk::UniquePipelineLayout pipelineLayout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo());
 
     vk::PipelineVertexInputStateCreateInfo vertexInput;
-
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
     inputAssembly.setTopology(vk::PrimitiveTopology::eTriangleList);
 
-    vk::Viewport viewport{0.0f, 0.0f, width, height};
+    vk::Viewport viewport{0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)};
     vk::Rect2D scissor{{0, 0}, {width, height}};
     vk::PipelineViewportStateCreateInfo viewportState;
     viewportState.setViewports(viewport);
     viewportState.setScissors(scissor);
 
     vk::PipelineMultisampleStateCreateInfo multisampling;
-
     vk::PipelineRasterizationStateCreateInfo rasterization;
     rasterization.setLineWidth(1.0f);
-
     vk::PipelineColorBlendAttachmentState colorBlendAttachment;
     colorBlendAttachment.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
                                            vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
-
     vk::PipelineColorBlendStateCreateInfo colorBlending;
     colorBlending.setAttachments(colorBlendAttachment);
-
     vk::PipelineRenderingCreateInfo pipelineRenderingInfo;
     pipelineRenderingInfo.setColorAttachmentFormats(swapchainImageFormat);
 
@@ -179,13 +174,13 @@ int main() {
 
     vk::UniqueCommandPool commandPool = device->createCommandPoolUnique(
         vk::CommandPoolCreateInfo{}
-        .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-        .setQueueFamilyIndex(queueFamilyIndex));
+            .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+            .setQueueFamilyIndex(queueFamilyIndex));
 
     std::vector commandBuffers = device->allocateCommandBuffersUnique(
         vk::CommandBufferAllocateInfo{}
-        .setCommandPool(*commandPool)
-        .setCommandBufferCount(swapchainImageCount));
+            .setCommandPool(*commandPool)
+            .setCommandBufferCount(swapchainImageCount));
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
